@@ -1,9 +1,7 @@
 import os
 import json
 from typing import Any, Dict, List, Optional, Tuple, Union
-
 import requests
-
 
 try:
     from dotenv import load_dotenv
@@ -20,6 +18,9 @@ try:
 except Exception:
     # dotenv is optional; proceed with os.environ only
     pass
+
+#  Import your fuzzy location helper
+from backend.utils.fuzzy_location import normalize_location_name
 
 
 class ApiManager:
@@ -163,6 +164,11 @@ class ApiManager:
         """
         if not self._has_key() or not query:
             return None
+
+        #  Apply fuzzy normalization before API call
+        query = normalize_location_name(query)
+        print(f"[FuzzyGeocode] Normalized query to: {query}")
+
         try:
             url = f"{self.base_url}/search/2/geocode/{requests.utils.quote(query)}.json"
             params = {
