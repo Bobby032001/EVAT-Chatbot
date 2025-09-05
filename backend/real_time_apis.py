@@ -1,9 +1,7 @@
 import os
 import json
 from typing import Any, Dict, List, Optional, Tuple, Union
-
 import requests
-
 
 try:
     from dotenv import load_dotenv
@@ -20,6 +18,9 @@ try:
 except Exception:
     # dotenv is optional; proceed with os.environ only
     pass
+
+# ✅ Import fuzzy matching helper
+from backend.utils.fuzzy_location import normalize_location_name
 
 
 class ApiManager:
@@ -88,12 +89,10 @@ class ApiManager:
 
         Coords are (lat, lon).
         """
-        # Use route summary to derive delay; TomTom traffic details API could be added later
         route = self.get_real_time_route(start_coords, end_coords)
         if not route:
             return None
         estimated_delay_minutes = route.get('traffic_delay_minutes', 0)
-        # Speed metrics not available without traffic flow API; return N/A
         return {
             'source': 'tomtom',
             'traffic_status': 'Available',
@@ -111,7 +110,6 @@ class ApiManager:
         if not self._has_key():
             return None
 
-        # Nearby stations mode
         if isinstance(x, (int, float)) and isinstance(y, (int, float)):
             lat = float(x)
             lon = float(y)
@@ -139,7 +137,7 @@ class ApiManager:
                     stations.append({
                         'name': poi.get('name', 'Unknown Station'),
                         'address': addr.get('freeformAddress', 'Unknown'),
-                        'power_kw': None,  # Not available in nearby API; can be enriched later
+                        'power_kw': None,
                         'cost_per_kwh': None,
                         'available_points': None,
                         'total_connectors': None,
@@ -163,6 +161,11 @@ class ApiManager:
         """
         if not self._has_key() or not query:
             return None
+
+        # ✅ Apply fuzzy normalization before API call
+        query = normalize_location_name(query)
+        print(f"[FuzzyGeocode] Normalized query to: {query}")
+
         try:
             url = f"{self.base_url}/search/2/geocode/{requests.utils.quote(query)}.json"
             params = {
@@ -186,5 +189,5 @@ class ApiManager:
         return None
 
 
-# Global instance as expected by imports in Rasa actions
+# Global instance
 api_manager = ApiManager()
